@@ -1,24 +1,36 @@
 
     console.log("IN tranpose_functions.js");
 
-    var osmd_transpose = {};
+    // create namespace if it does not exist yet
+    var osmd_transpose = osmd_transpose || {};
+
+  
+    // add items to the namespace
+
     (function() {
-        this.id = 0;
+        // scan from <step>D</step>
+        this.get_xml_value = function(sline)
+        {
+            ipos = sline.indexOf("<");
+            if (ipos < 0)
+                return("");
 
+            stext = sline.substr(ipos);
+            // skip first <>
+            ipos2 = stext.indexOf(">");
+            stext = stext.substr(ipos2+1);
+            ipos3 = stext.indexOf("<");
+            stext = stext.substr(0, ipos3);
+            return(stext);
+        }
 
-        this.test = -1;
-     
-        this.next = function() {
-            return this.id++;    
-        };
-     
-        this.reset = function() {
-            this.id = 0;     
+        this.get_xml_number = function(sline)
+        {
+            value = this.get_xml_value(sline);
+            return (Number(value));
         }
     }).apply(osmd_transpose);    
      
-
-
 
     osmd_transpose.back = function() {
         console.log("BACK id: %s", this.id); 
@@ -146,7 +158,10 @@
         "Cb" : 12,
     };
 
-        
+    
+
+
+
     // when to bump the octave
     osmd_transpose.step_number = {
         "C" : 0,
@@ -165,20 +180,22 @@
     {
         var parameters = this.parameters;
         show_output = parameters.show_output;
+
         if (show_output)
-            console.log("transpose: %s %s %s", old_step, old_alter, old_octave)
+            console.log("transpose(): old_step: %s old_alter: %s old_octave: %s", old_step, old_alter, old_octave)
         old_note = old_step;
         if (old_alter == 1)
             old_note += "#";
         else if (old_alter == -1)
             old_note += "b";
 
-        // move to local variables
+        // move to local variables for easier access
         var old_key = this.old_key;
         var new_key = this.new_key;
         
         
-        //console.log("old_key: %s new_key: %s old_note: %s", old_key, new_key, old_note);
+        if (show_output)
+            console.log("old_key: %s new_key: %s old_note: %s", old_key, new_key, old_note);
 
         old_key_number = this.note_numbers[old_key];
         new_key_number = this.note_numbers[new_key];
@@ -197,7 +214,7 @@
             
             if (Math.abs(up_offset) <= Math.abs(down_offset))
                 key_offset = up_offset;
-        else
+            else
                 key_offset = down_offset;
         }
         
@@ -253,23 +270,31 @@
     // show_output - true to show all console.logs
 
     osmd_transpose.transpose_xml = function(parameters, xml_string_in)
-{
-    this.parameters = parameters;
-    console.log("transpose_xml: transpose_key: %s str lenL %s", parameters.transpose_key, xml_string_in.length);
-    if (parameters.transpose_key == "None")
-        return;
+    {
+        this.parameters = parameters;
+        var xml_string = xml_string_in;
 
-    show_output = this.parameters.show_output;
+        console.log("transpose_xml: transpose_key: %s xml_string_in.length: %s", parameters.transpose_key, xml_string_in.length);
+        if (parameters.transpose_key == "None")
+            return(xml_string);
 
-    var xml_string = xml_string_in;
-    str_out = "";
-    in_note = false;
-    in_measure = false;
-    if (show_output)
-        console.log("xml_string length: %s", xml_string.length);
-    str_in = xml_string.split("\n");
-    if (show_output)
-        console.log("transpose_xml lines: %s", str_in.length);
+        show_output = this.parameters.show_output;
+
+
+
+        // move to local variables for easier access
+        var old_key = this.old_key;
+        var new_key = this.new_key;
+
+        
+        str_out = "";
+        in_note = false;
+        in_measure = false;
+        if (show_output)
+            console.log("xml_string length: %s", xml_string.length);
+        str_in = xml_string.split("\n");
+        if (show_output)
+            console.log("transpose_xml lines: %s", str_in.length);
 
     in_pitch = false;
     in_root = false;
@@ -295,7 +320,7 @@
         //  <divisions>256</divisions>
         if (sline.indexOf("<divisions>") >= 0)
         {
-            divisions = get_xml_number(sline);
+            divisions = this.get_xml_number(sline);
             if (show_output)
                 console.log("divisions: %s", divisions);
         }
@@ -336,7 +361,7 @@
             // <fifths>-4</fifths>
             if (sline.indexOf("</fifths") >= 0)
             {
-                fifths = get_xml_number(sline);
+                fifths = this.get_xml_number(sline);
                 if (show_output)
                     console.log("SLINE: %s fifths: %s", sline, fifths);
                 line_of_fifths_c = this.line_of_fifths_numbers["C"];
@@ -375,7 +400,7 @@
             {
                 if (sline.indexOf("<duration>") >= 0)
                 {
-                    duration = get_xml_number(sline);
+                    duration = this.get_xml_number(sline);
                     //console.log("duration: %s", duration);
                 }
             }
@@ -457,17 +482,17 @@
             {
                 if (sline.indexOf("<step") >= 0)
                 {
-                    pitch_step = get_xml_value(sline);
+                    pitch_step = this.get_xml_value(sline);
                     continue;
                 }
                 if (sline.indexOf("<alter") >= 0)
                 {
-                    pitch_alter = get_xml_number(sline);
+                    pitch_alter = this.get_xml_number(sline);
                     continue;
                 }
                 if (sline.indexOf("<octave") >= 0)
                 {
-                    pitch_octave = get_xml_number(sline);
+                    pitch_octave = this.get_xml_number(sline);
                     continue;
                 }
             }
@@ -565,14 +590,14 @@
                     console.log("IN ROOT: %s", sline);
                 if (sline.indexOf("<root-step") >= 0)
                 {
-                    root_step = get_xml_value(sline);
+                    root_step = this.get_xml_value(sline);
                     if (show_output)
                         console.log("ROOT_STEP; %s", root_step);
                     continue;
                 }
                 else if (sline.indexOf("<root-alter") >= 0)
                 {
-                    root_alter = get_xml_number(sline);
+                    root_alter = this.get_xml_number(sline);
                     if (show_output)
                         console.log("root_alter; %s", root_alter);
                     continue;
@@ -628,14 +653,14 @@
                     console.log("IN bass: %s", sline);
                 if (sline.indexOf("<bass-step") >= 0)
                 {
-                    bass_step = get_xml_value(sline);
+                    bass_step = this.get_xml_value(sline);
                     if (show_output)
                         console.log("bass_STEP; %s", bass_step);
                     continue;
                         }
                 else if (sline.indexOf("<bass-alter") >= 0)
                 {
-                    bass_alter = get_xml_number(sline);
+                    bass_alter = this.get_xml_number(sline);
                     if (show_output)
                         console.log("bass_alter; %s", bass_alter);
                     continue;
@@ -660,26 +685,3 @@
 
         return(xml_string_out);
     }
-
-    // scan from <step>D</step>
-    function get_xml_value(sline)
-    {
-        ipos = sline.indexOf("<");
-        if (ipos < 0)
-            return("");
-
-        stext = sline.substr(ipos);
-        // skip first <>
-        ipos2 = stext.indexOf(">");
-        stext = stext.substr(ipos2+1);
-        ipos3 = stext.indexOf("<");
-        stext = stext.substr(0, ipos3);
-        return(stext);
-    }
-
-    function get_xml_number(sline)
-    {
-        value = get_xml_value(sline);
-        return (Number(value));
-    }
-
